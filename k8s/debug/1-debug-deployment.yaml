@@ -1,0 +1,38 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  namespace: debug
+  name: debug-client
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: client
+  namespace: debug
+  labels:
+    app: debug
+spec:
+  selector:
+    matchLabels:
+      app: debug
+  template:
+    metadata:
+      labels:
+        app: debug
+    spec:
+      serviceAccountName: debug-client
+      containers:
+        - name: client
+          image: gcr.io/spiffe-io/spire-agent:1.4.2
+          command: ["sleep"]
+          args: ["1000000000"]
+          volumeMounts:
+            - name: spire-agent-socket
+              mountPath: /run/spire/sockets
+              readOnly: true
+      volumes:
+        - name: spire-agent-socket
+          hostPath:
+            path: /run/spire/sockets
+            type: Directory

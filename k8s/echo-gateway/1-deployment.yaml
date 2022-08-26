@@ -1,0 +1,53 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: echo-gateway
+  name: echo-gateway
+  namespace: echo-gateway
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: echo-gateway
+  template:
+    metadata:
+      labels:
+        app: echo-gateway
+    spec:
+      serviceAccountName: echo-gateway
+      containers:
+      - image: ko://github.com/jlevesy/spire-testbed/cmd/gateway
+        imagePullPolicy: Always
+        env:
+          - name: GRPC_GO_LOG_VERBOSITY_LEVEL
+            value: "99"
+          - name: GRPC_GO_LOG_SEVERITY_LEVEL
+            value: "info"
+        name: echo-gateway
+        args:
+          # Only traefik is allowed to call this gateway.
+          - "-allowed-client-id"
+          - "spiffe://demo.voiapp.io/ns/traefik/sa/traefik"
+          # Only call the echo-server.
+          - "-allowed-server-id"
+          - "spiffe://demo.voiapp.io/ns/echo-server/sa/echo-server"
+          - "-server-address"
+          - "kubernetes:///echo-server.echo-server:3333"
+          - "-spire-agent-sock"
+          - "unix:///run/spire/sockets/agent.sock"
+          - "-bind-address"
+          - ":8443"
+        ports:
+          - name: https
+            containerPort: 8443
+        volumeMounts:
+          - name: spire-agent-socket
+            mountPath: /run/spire/sockets
+            readOnly: true
+      volumes:
+        - name: spire-agent-socket
+          hostPath:
+            path: /run/spire/sockets
+            type: DirectoryOrCreate

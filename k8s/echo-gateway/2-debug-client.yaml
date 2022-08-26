@@ -1,0 +1,30 @@
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: echo-http-client
+  namespace: echo-gateway
+spec:
+  serviceAccountName: echo-gateway
+  containers:
+  - image: ko://github.com/jlevesy/spire-testbed/cmd/httpclient
+    imagePullPolicy: Always
+    env:
+      - name: GRPC_GO_LOG_VERBOSITY_LEVEL
+        value: "99"
+      - name: GRPC_GO_LOG_SEVERITY_LEVEL
+        value: "info"
+    name: echo-gateway
+    command:
+      - sleep
+    args:
+      - infinity
+    volumeMounts:
+      - name: spire-agent-socket
+        mountPath: /run/spire/sockets
+        readOnly: true
+  volumes:
+    - name: spire-agent-socket
+      hostPath:
+        path: /run/spire/sockets
+        type: DirectoryOrCreate

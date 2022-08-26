@@ -1,0 +1,26 @@
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: ServersTransport
+metadata:
+  name: echo-gateway
+  namespace: echo-gateway
+spec:
+  enableSpiffeMTLS: true
+  serverSpiffeIDs:
+    - "spiffe://demo.voiapp.io/ns/echo-gateway/sa/echo-gateway"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: echo-gateway
+  namespace: echo-gateway
+  annotations:
+    traefik.ingress.kubernetes.io/service.serverstransport: echo-gateway-echo-gateway@kubernetescrd
+spec:
+  ports:
+  - port: 8443
+    name: https
+    protocol: TCP
+    targetPort: https
+  selector:
+    app: echo-gateway
