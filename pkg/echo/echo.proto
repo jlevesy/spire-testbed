@@ -1,0 +1,16 @@
+syntax = "proto3";
+option go_package = "github.com/voiapp/alts-testbed/src/echo";
+
+package echo;
+
+service Echo {
+  rpc Echo (EchoRequest) returns (EchoReply) {}
+}
+
+message EchoRequest {
+  string payload = 1;
+}
+
+message EchoReply {
+  string payload = 1;
+}

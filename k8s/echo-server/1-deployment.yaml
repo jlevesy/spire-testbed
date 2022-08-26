@@ -1,0 +1,48 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: echo-server
+  name: echo-server
+  namespace: echo-server
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: echo-server
+  template:
+    metadata:
+      labels:
+        app: echo-server
+    spec:
+      serviceAccountName: echo-server
+      containers:
+      - image: ko://github.com/jlevesy/spire-testbed/cmd/server
+        imagePullPolicy: Always
+        env:
+          - name: GRPC_GO_LOG_VERBOSITY_LEVEL
+            value: "99"
+          - name: GRPC_GO_LOG_SEVERITY_LEVEL
+            value: "info"
+        name: echo-server
+        args:
+          # Only echo-client is allowed to call this server.
+          - "-allowed-client-id"
+          - "spiffe://demo.voiapp.io/ns/echo-gateway/sa/echo-gateway"
+          - "-spire-agent-sock"
+          - "unix:///run/spire/sockets/agent.sock"
+          - "-bind-address"
+          - ":3333"
+        ports:
+          - name: grpc
+            containerPort: 3333
+        volumeMounts:
+          - name: spire-agent-socket
+            mountPath: /run/spire/sockets
+            readOnly: true
+      volumes:
+        - name: spire-agent-socket
+          hostPath:
+            path: /run/spire/sockets
+            type: DirectoryOrCreate
