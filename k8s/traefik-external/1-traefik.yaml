@@ -2,24 +2,31 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: traefik
+  name: traefik-external
+---
+apiVersion: networking.k8s.io/v1
+kind: IngressClass
+metadata:
+  name: traefik-external
+spec:
+  controller: traefik.io/ingress-controller
 ---
 # Source: traefik/templates/rbac/serviceaccount.yaml
 kind: ServiceAccount
 apiVersion: v1
 metadata:
-  name: traefik
-  namespace: traefik
+  name: traefik-external
+  namespace: traefik-external
   labels:
-    app.kubernetes.io/name: traefik
+    app.kubernetes.io/name: traefik-external
 ---
 # Source: traefik/templates/rbac/clusterrole.yaml
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: traefik
+  name: traefik-external
   labels:
-    app.kubernetes.io/name: traefik
+    app.kubernetes.io/name: traefik-external
 rules:
   - apiGroups:
       - ""
@@ -69,33 +76,33 @@ rules:
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: traefik
+  name: traefik-external
   labels:
-    app.kubernetes.io/name: traefik
+    app.kubernetes.io/name: traefik-external
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: traefik
+  name: traefik-external
 subjects:
   - kind: ServiceAccount
-    name: traefik
-    namespace: traefik
+    name: traefik-external
+    namespace: traefik-external
 ---
 # Source: traefik/templates/deployment.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: traefik
-  namespace: traefik
+  name: traefik-external
+  namespace: traefik-external
   labels:
-    app.kubernetes.io/name: traefik
+    app.kubernetes.io/name: traefik-external
   annotations:
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app.kubernetes.io/name: traefik
-      app.kubernetes.io/instance: traefik
+      app.kubernetes.io/name: traefik-external
+      app.kubernetes.io/instance: traefik-external
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -109,14 +116,14 @@ spec:
         prometheus.io/path: "/metrics"
         prometheus.io/port: "9100"
       labels:
-        app.kubernetes.io/name: traefik
-        app.kubernetes.io/instance: traefik
+        app.kubernetes.io/name: traefik-external
+        app.kubernetes.io/instance: traefik-external
     spec:
-      serviceAccountName: traefik
+      serviceAccountName: traefik-external
       terminationGracePeriodSeconds: 60
       hostNetwork: false
       containers:
-      - image: "jlevesy/traefik:poc-spiffe-support"
+      - image: "jlevesy/traefik:poc-spiffe-support-server"
         imagePullPolicy: Always
         name: traefik
         resources:
@@ -182,8 +189,9 @@ spec:
           - "--metrics.prometheus.entrypoint=metrics"
           - "--providers.kubernetescrd"
           - "--providers.kubernetesingress"
+          - "--providers.kubernetesingress.ingressclass=traefik-external"
           # This.
-          - "--serverstransport.spiffeagentsocket=unix:///run/spire/sockets/agent.sock"
+          - "--spiffe.workloadapiaddr=unix:///run/spire/sockets/agent.sock"
       volumes:
         - name: data
           emptyDir: {}
@@ -200,22 +208,22 @@ spec:
 apiVersion: v1
 kind: List
 metadata:
-  name: traefik
-  namespace: traefik
+  name: traefik-external
+  namespace: traefik-external
 items:
   - apiVersion: v1
     kind: Service
     metadata:
-      name: traefik
-      namespace: traefik
+      name: traefik-external
+      namespace: traefik-external
       labels:
-        app.kubernetes.io/name: traefik
+        app.kubernetes.io/name: traefik-external
       annotations:
     spec:
       type: LoadBalancer
       selector:
-        app.kubernetes.io/name: traefik
-        app.kubernetes.io/instance: traefik
+        app.kubernetes.io/name: traefik-external
+        app.kubernetes.io/instance: traefik-external
       ports:
       - port: 80
         name: web

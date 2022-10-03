@@ -1,0 +1,33 @@
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: ServersTransport
+metadata:
+  name: traefik-spiffe
+  namespace: traefik-internal
+spec:
+  # Traefik doesn't set automatically the server name when forwarding a request over TLS, see https://github.com/traefik/traefik/issues/8828
+  serverName: echo-internal.localhost
+  enableSpiffeMTLS: true
+  serverSpiffeIDs:
+    - "spiffe://demo.voiapp.io/ns/traefik-internal/sa/traefik-internal"
+---
+# Source: traefik/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: traefik-internal
+  namespace: traefik-internal
+  labels:
+    app.kubernetes.io/name: traefik-internal
+  annotations:
+    traefik.ingress.kubernetes.io/service.serverstransport: traefik-internal-traefik-spiffe@kubernetescrd
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: traefik-internal
+    app.kubernetes.io/instance: traefik-internal
+  ports:
+  - port: 8443
+    name: https
+    targetPort: https
+    protocol: TCP
