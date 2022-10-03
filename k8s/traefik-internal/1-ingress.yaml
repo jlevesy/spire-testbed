@@ -1,0 +1,21 @@
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: echo-gateway-internal
+  namespace: traefik-internal
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web
+spec:
+  ingressClassName: traefik-external
+  rules:
+  - host: echo-internal.localhost
+    http:
+      paths:
+      - backend:
+          service:
+            name: traefik-internal
+            port:
+              name: https
+        path: /echo
+        pathType: Prefix

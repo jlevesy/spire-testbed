@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"flag"
+	"fmt"
 	"log"
 	"net/http"
 
@@ -72,14 +73,20 @@ func main() {
 
 	mux.HandleFunc("/echo", echoHandler(echo.NewEchoClient(conn)))
 
+	var authorizer = tlsconfig.AuthorizeAny()
+
+	if allowedClientID != "" {
+		authorizer = tlsconfig.AuthorizeID(
+			spiffeid.RequireFromString(allowedClientID),
+		)
+	}
+
 	server := http.Server{
 		Addr: bindAddress,
 		TLSConfig: tlsconfig.MTLSServerConfig(
 			source,
 			source,
-			tlsconfig.AuthorizeID(
-				spiffeid.RequireFromString(allowedClientID),
-			),
+			authorizer,
 		),
 		Handler: &mux,
 	}
@@ -102,6 +109,10 @@ type echoResponse struct {
 func echoHandler(cl echo.EchoClient) http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
 		var req echoRequest
+
+		for key, vals := range r.Header {
+			fmt.Println(key, "===>", vals)
+		}
 
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			log.Printf("Unexpected error while decoding body %v", err)

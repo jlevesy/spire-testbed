@@ -2,24 +2,31 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: traefik
+  name: traefik-internal
+---
+apiVersion: networking.k8s.io/v1
+kind: IngressClass
+metadata:
+  name: traefik-internal
+spec:
+  controller: traefik.io/ingress-controller
 ---
 # Source: traefik/templates/rbac/serviceaccount.yaml
 kind: ServiceAccount
 apiVersion: v1
 metadata:
-  name: traefik
-  namespace: traefik
+  name: traefik-internal
+  namespace: traefik-internal
   labels:
-    app.kubernetes.io/name: traefik
+    app.kubernetes.io/name: traefik-internal
 ---
 # Source: traefik/templates/rbac/clusterrole.yaml
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: traefik
+  name: traefik-internal
   labels:
-    app.kubernetes.io/name: traefik
+    app.kubernetes.io/name: traefik-internal
 rules:
   - apiGroups:
       - ""
@@ -69,33 +76,33 @@ rules:
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: traefik
+  name: traefik-internal
   labels:
-    app.kubernetes.io/name: traefik
+    app.kubernetes.io/name: traefik-internal
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: traefik
+  name: traefik-internal
 subjects:
   - kind: ServiceAccount
-    name: traefik
-    namespace: traefik
+    name: traefik-internal
+    namespace: traefik-internal
 ---
 # Source: traefik/templates/deployment.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: traefik
-  namespace: traefik
+  name: traefik-internal
+  namespace: traefik-internal
   labels:
-    app.kubernetes.io/name: traefik
+    app.kubernetes.io/name: traefik-internal
   annotations:
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app.kubernetes.io/name: traefik
-      app.kubernetes.io/instance: traefik
+      app.kubernetes.io/name: traefik-internal
+      app.kubernetes.io/instance: traefik-internal
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -109,14 +116,14 @@ spec:
         prometheus.io/path: "/metrics"
         prometheus.io/port: "9100"
       labels:
-        app.kubernetes.io/name: traefik
-        app.kubernetes.io/instance: traefik
+        app.kubernetes.io/name: traefik-internal
+        app.kubernetes.io/instance: traefik-internal
     spec:
-      serviceAccountName: traefik
+      serviceAccountName: traefik-internal
       terminationGracePeriodSeconds: 60
       hostNetwork: false
       containers:
-      - image: "jlevesy/traefik:poc-spiffe-support"
+      - image: "jlevesy/traefik:poc-spiffe-support-server"
         imagePullPolicy: Always
         name: traefik
         resources:
@@ -139,18 +146,15 @@ spec:
           successThreshold: 1
           timeoutSeconds: 2
         ports:
-        - name: "metrics"
-          containerPort: 9100
-          protocol: "TCP"
-        - name: "traefik"
-          containerPort: 9000
-          protocol: "TCP"
-        - name: "web"
-          containerPort: 8000
-          protocol: "TCP"
-        - name: "websecure"
+        - name: https
           containerPort: 8443
-          protocol: "TCP"
+          protocol: TCP
+        - name: metrics
+          containerPort: 9100
+          protocol: TCP
+        - name: traefik
+          containerPort: 9000
+          protocol: TCP
         securityContext:
           capabilities:
             drop:
@@ -172,9 +176,8 @@ spec:
           - "--global.checknewversion"
           - "--global.sendanonymoususage"
           - "--entrypoints.metrics.address=:9100/tcp"
+          - "--entrypoints.spiffe.address=:8443/tcp"
           - "--entrypoints.traefik.address=:9000/tcp"
-          - "--entrypoints.web.address=:8000/tcp"
-          - "--entrypoints.websecure.address=:8443/tcp"
           - "--ping=true"
           - "--log.level=DEBUG"
           - "--accesslog=true"
@@ -182,8 +185,9 @@ spec:
           - "--metrics.prometheus.entrypoint=metrics"
           - "--providers.kubernetescrd"
           - "--providers.kubernetesingress"
+          - "--providers.kubernetesingress.ingressclass=traefik-internal"
           # This.
-          - "--spiffe.workloadAPIAddr=unix:///run/spire/sockets/agent.sock"
+          - "--spiffe.workloadapiaddr=unix:///run/spire/sockets/agent.sock"
       volumes:
         - name: data
           emptyDir: {}
@@ -198,30 +202,20 @@ spec:
 ---
 # Source: traefik/templates/service.yaml
 apiVersion: v1
-kind: List
+kind: Service
 metadata:
-  name: traefik
-  namespace: traefik
-items:
-  - apiVersion: v1
-    kind: Service
-    metadata:
-      name: traefik
-      namespace: traefik
-      labels:
-        app.kubernetes.io/name: traefik
-      annotations:
-    spec:
-      type: LoadBalancer
-      selector:
-        app.kubernetes.io/name: traefik
-        app.kubernetes.io/instance: traefik
-      ports:
-      - port: 80
-        name: web
-        targetPort: "web"
-        protocol: TCP
-      - port: 443
-        name: websecure
-        targetPort: "websecure"
-        protocol: TCP
+  name: traefik-internal
+  namespace: traefik-internal
+  labels:
+    app.kubernetes.io/name: traefik-internal
+  annotations:
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: traefik-internal
+    app.kubernetes.io/instance: traefik-internal
+  ports:
+  - port: 8443
+    name: spiffe
+    targetPort: spiffe
+    protocol: TCP

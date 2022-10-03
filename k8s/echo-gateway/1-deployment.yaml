@@ -28,8 +28,8 @@ spec:
         name: echo-gateway
         args:
           # Only traefik is allowed to call this gateway.
-          - "-allowed-client-id"
-          - "spiffe://demo.voiapp.io/ns/traefik/sa/traefik"
+          # - "-allowed-client-id"
+          # - "spiffe://demo.voiapp.io/ns/traefik/sa/traefik"
           # Only call the echo-server.
           - "-allowed-server-id"
           - "spiffe://demo.voiapp.io/ns/echo-server/sa/echo-server"

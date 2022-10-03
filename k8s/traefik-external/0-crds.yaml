@@ -1806,6 +1806,37 @@ spec:
                 description: SniStrict defines whether Traefik allows connections
                   from clients connections that do not specify a server_name extension.
                 type: boolean
+              spiffe:
+                description: Spiffe configures server side SPIFFE on this router.
+                properties:
+                  clientIDs:
+                    description: List of allowed client SpiffeIDs, only applied if
+                      mode is mTLS or mTLSWebServer, takes precedence over TrustDomain.
+                    items:
+                      type: string
+                    type: array
+                  mode:
+                    description: 'Mode defines Traefik behavior regarding SPIFFE certificates.
+                      There are 4 possible settings: - Empty: SPIFFE is not enabled
+                      for this router. - TLS: Traefik serves its SPIFFE ceritifate,
+                      but does not require nor validate any client certificate - mTLS:
+                      Traefik serves its SPIFFE certificate, and checks the validity
+                      of client SPIFFE certificate. Optionally checks the client certificate
+                      Spiffe ID if either ClientIDs or TrustDomain are given. - mTLSWebServer:
+                      Traefik serves the configured certificate but checks the validation
+                      of the client SPIFFE certificate. Optionally checks the client
+                      certificate Spiffe ID if either ClientIDs or TrustDomain are
+                      given.'
+                    enum:
+                    - TLS
+                    - mTLS
+                    - mTLSWebServer
+                    type: string
+                  trustDomain:
+                    description: Allowed SPIFFE trust domain for client certificates,
+                      only applied if mode is mTLS or mTLSWebServer.
+                    type: string
+                type: object
             type: object
         required:
         - metadata
