@@ -24,7 +24,7 @@ install_traefik:
 
 .PHONY: install_spire
 install_spire:
-	kubectl apply -f ./k8s/spire
+	KO_DOCKER_REPO=voidev.localhost:5000 ko apply -f ./k8s/spire
 
 .PHONY: install_server
 install_server:
