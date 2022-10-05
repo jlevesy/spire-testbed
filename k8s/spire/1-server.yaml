@@ -89,19 +89,27 @@ spec:
         app: spire-server
     spec:
       serviceAccountName: spire-server
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 3000
+        fsGroup: 2000
       containers:
-        - name: k8s-workload-registrar
-          image: gcr.io/spiffe-io/k8s-workload-registrar:1.4.2
-          imagePullPolicy: Always
+        - name: init-workload
+          image: ko://github.com/jlevesy/spire-testbed/cmd/workload-init
           args:
-            - -config
-            - /run/k8s-workload-registrar/config/registrar.conf
+            - -configPath
+            - /run/spire/config/workload-init.conf
+            - -socketPath
+            - /run/spire/sockets/registration.sock
+            # Only apply if we're the first pod of the stateful set.
+            - -applyIfHostNameEq
+            - spire-server-0
           volumeMounts:
             - name: spire-server-socket
               mountPath: /run/spire/sockets
               readOnly: false
-            - name: k8s-workload-registrar-config
-              mountPath: /run/k8s-workload-registrar/config
+            - name: spire-config
+              mountPath: /run/spire/config
               readOnly: true
         - name: spire-server
           image: gcr.io/spiffe-io/spire-server:1.4.2
@@ -136,12 +144,7 @@ spec:
             periodSeconds: 5
       volumes:
         - name: spire-server-socket
-          hostPath:
-            path: /run/spire/server-sockets
-            type: DirectoryOrCreate
-        - name: k8s-workload-registrar-config
-          configMap:
-            name: k8s-workload-registrar
+          emptyDir{}:
         - name: spire-config
           configMap:
             name: spire-server
@@ -168,6 +171,26 @@ metadata:
   name: spire-server
   namespace: spire
 data:
+  workload-init.conf:
+    registrations = [
+      {
+        spiffe_id = "spiffe://demo.voiapp.io/ns/spire/sa/workload-registrar"
+        parent_id = "spiffe://demo.voiapp.io/workload/agent"
+        admin = true
+        selectors = [
+          "k8s:ns:spire",
+          "k8s:sa:workload-registrar",
+        ]
+      },
+      {
+        spiffe_id = "spiffe://demo.voiapp.io/workload/agent"
+        parent_id = "spiffe://demo.voiapp.io/spire/server"
+        selectors = [
+          "k8s_psat:agent_ns:spire",
+          "k8s_psat:agent_sa:spire-agent"
+        ]
+      },
+    ]
   server.conf: |
     server {
       bind_address = "0.0.0.0"
@@ -219,19 +242,3 @@ data:
       live_path = "/live"
       ready_path = "/ready"
     }
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: k8s-workload-registrar
-  namespace: spire
-data:
-  registrar.conf: |
-    log_level = "debug"
-    mode = "reconcile"
-    trust_domain = "demo.voiapp.io"
-    cluster = "voi-demo"
-    server_socket_path = "/run/spire/sockets/registration.sock"
-    metrics_addr = "0" # <- this conflicts with the server by default, 0 disables it.
-    disabled_namespaces = ["kube-system", "kube-public", "spire"]
-

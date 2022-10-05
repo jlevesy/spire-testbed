@@ -1,0 +1,85 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: workload-registrar
+  namespace: spire
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: workload-registrar
+rules:
+- apiGroups: [""]
+  resources: ["pods", "nodes", "endpoints"]
+  verbs: ["get", "list", "watch"]
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: workload-registrar
+subjects:
+- kind: ServiceAccount
+  name: workload-registrar
+  namespace: spire
+roleRef:
+  kind: ClusterRole
+  name: workload-registrar
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: workload-registrar
+  name: workload-registrar
+  namespace: spire
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: workload-registrar
+  template:
+    metadata:
+      labels:
+        app: workload-registrar
+    spec:
+      serviceAccountName: workload-registrar
+      containers:
+        - name: workload-registrar
+          image: gcr.io/spiffe-io/k8s-workload-registrar:1.4.2
+          imagePullPolicy: Always
+          args:
+            - -config
+            - /run/k8s-workload-registrar/config/registrar.conf
+          volumeMounts:
+            - name: spire-agent-socket
+              mountPath: /run/spire/sockets
+              readOnly: false
+            - name: k8s-workload-registrar-config
+              mountPath: /run/k8s-workload-registrar/config
+              readOnly: true
+      volumes:
+        - name: k8s-workload-registrar-config
+          configMap:
+            name: k8s-workload-registrar
+        - name: spire-agent-socket
+          hostPath:
+            path: /run/spire/sockets
+            type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: k8s-workload-registrar
+  namespace: spire
+data:
+  registrar.conf: |
+    log_level = "debug"
+    mode = "reconcile"
+    trust_domain = "demo.voiapp.io"
+    cluster = "voi-demo"
+    agent_socket_path = "/run/spire/sockets/agent.sock"
+    server_address = "spire-server.spire.svc.cluster.local:8081"
+    metrics_addr = ":8080"
+    disabled_namespaces = ["kube-system", "kube-public", "spire"]
