@@ -27,8 +27,7 @@ metadata:
   namespace: echo-gateway
 spec:
   spiffe:
-    mode: mTLS
-    clientIDs:
+    ids:
       - "spiffe://demo.voiapp.io/ns/traefik-external/sa/traefik-external"
 ---
 apiVersion: networking.k8s.io/v1

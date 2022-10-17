@@ -5,10 +5,10 @@ metadata:
   name: traefik-spiffe
   namespace: traefik-internal
 spec:
-  # Traefik doesn't set automatically the server name when forwarding a request over TLS, see https://github.com/traefik/traefik/issues/8828
-  serverName: echo-internal.localhost
-  enableSpiffeMTLS: true
-  serverSpiffeIDs:
+  spiffe:
+    # Traefik doesn't set automatically the server name when forwarding a request over TLS, see https://github.com/traefik/traefik/issues/8828
+    serverName: echo-internal.localhost
+    ids:
     - "spiffe://demo.voiapp.io/ns/traefik-internal/sa/traefik-internal"
 ---
 # Source: traefik/templates/service.yaml
