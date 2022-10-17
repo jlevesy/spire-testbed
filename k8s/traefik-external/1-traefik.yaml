@@ -123,7 +123,7 @@ spec:
       terminationGracePeriodSeconds: 60
       hostNetwork: false
       containers:
-      - image: "jlevesy/traefik:poc-spiffe-support-server"
+      - image: "jlevesy/traefik:spiffe-server-side"
         imagePullPolicy: Always
         name: traefik
         resources:

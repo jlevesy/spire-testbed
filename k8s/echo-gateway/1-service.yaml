@@ -5,8 +5,8 @@ metadata:
   name: echo-gateway
   namespace: echo-gateway
 spec:
-  enableSpiffeMTLS: true
-  serverSpiffeIDs:
+  spiffe:
+    ids:
     - "spiffe://demo.voiapp.io/ns/echo-gateway/sa/echo-gateway"
 ---
 apiVersion: v1
